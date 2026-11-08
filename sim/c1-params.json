@@ -1,0 +1,21 @@
+{
+ "kEarly": 2.96,
+ "kEnd": 0.4,
+ "kRamp": 25,
+ "tEarly": 2.11,
+ "kPlay": 1.33,
+ "tPlay": 1.73,
+ "mu": 1.45,
+ "endMu": 1.76,
+ "endRem": 6,
+ "pace": 13.95,
+ "minCap": 10.32,
+ "playLen": 8,
+ "cashLow": 22.85,
+ "cashLen": 4,
+ "liqRem": 2,
+ "liqKappa": 0.3,
+ "jitter": 0.08,
+ "denial": 0,
+ "budget": 3000
+}

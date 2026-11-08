@@ -142,7 +142,7 @@ export const SmartRival: BotFactory = {
 };
 
 /** Live-calibrated rival (from recon match 45629: paid ~3.5*face+3, ~10/tile, plays 5-7 letter words mid-game). */
-export function marketBot(scale = 1, name = "market"): BotFactory {
+export function marketBot(scale = 1, name = "market", a = 3, b = 3.3): BotFactory {
   return {
     name,
     create: (seed) => {
@@ -153,10 +153,10 @@ export function marketBot(scale = 1, name = "market"): BotFactory {
           if (v.bagTotal === 0) return 0;
           const f = letterValue(L);
           const have = v.rack[li(L)]!;
-          let b = (3 + 3.3 * f) * scale * (0.7 + 0.6 * rnd());
-          if (have >= 2) b *= 0.5;
-          if (v.bagTotal <= 8) b *= 1.5;
-          return clampBid(Math.min(b, v.balance * 0.4), v);
+          let bid = (a + b * f) * scale * (0.7 + 0.6 * rnd());
+          if (have >= 2) bid *= 0.5;
+          if (v.bagTotal <= 8) bid *= 1.5;
+          return clampBid(Math.min(bid, v.balance * 0.4), v);
         },
         chooseWords(v) {
           if (v.bagTotal <= 2) return playAll(v, 2);
@@ -168,9 +168,11 @@ export function marketBot(scale = 1, name = "market"): BotFactory {
 }
 export const Market = marketBot(1);
 export const MarketHi = marketBot(1.3, "marketHi");
+/** Calibrated to live match 45721 (clearing ~ 6 + 2.7*face). */
+export const MarketLive = marketBot(1, "marketLive", 6, 2.7);
 
 export const ZOO: Record<string, BotFactory> = {
-  market: Market, marketHi: MarketHi,
+  market: Market, marketHi: MarketHi, marketLive: MarketLive,
   starter: Starter, starterGreedy: StarterGreedy, hoarder: Hoarder, allin: AllIn, rare: RareChaser,
   spammer: Spammer, copycat: Copycat, jammer: Jammer, saver: Saver, smart: SmartRival,
 };
