@@ -29,10 +29,14 @@ export interface Params {
   lamMin: number; // bounds for the score-per-coin threshold
   lamMax: number;
   prior: number; // pseudo-observations for the price model prior
+  hiBoost: number; // bid multiplier for heavy letters J Q X Z K (live winners bid 34-60 on these)
+  hiCapFrac: number; // ...but never more than this fraction of balance on one heavy tile
   budget: number; // partition node budget
 }
 
 export const DEFAULT_PARAMS: Params = {
+  hiBoost: 1.4,
+  hiCapFrac: 0.25,
   kEarly: 2.13,
   kEnd: 0.4,
   kRamp: 39,
@@ -151,7 +155,11 @@ export function makeChampion(p: Params = DEFAULT_PARAMS, name = "champion"): Bot
           let mu = p.adaptive ? p.mu / lambdaFor(p, v, L, rem) : p.mu;
           if (rem <= p.endRem) mu *= p.endMu;
           let bid = val * mu;
-          const cap = Math.max(p.minCap, v.balance * Math.min(1, p.pace / rem));
+          let cap = Math.max(p.minCap, v.balance * Math.min(1, p.pace / rem));
+          if (p.hiBoost !== 1 && "JQXZK".includes(L) && rem > 2) {
+            // Q without a U is near-useless: only boost Q if we hold a U
+            if (L !== "Q" || v.rack[li("U")]! > 0) { bid *= p.hiBoost; cap = Math.max(cap, v.balance * p.hiCapFrac); }
+          }
           bid = Math.min(bid, cap);
           if (v.auctionType === "FirstPrice") bid = Math.min(bid, rivalEstimate(v, L) + 1);
           bid *= 1 + p.jitter * (2 * v.rng() - 1);
