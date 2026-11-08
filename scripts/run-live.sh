@@ -4,6 +4,7 @@
 #   TOURNAMENT_ID=<id> scripts/run-live.sh
 cd "$(dirname "$0")/.."
 export BOT_NAME=${BOT_NAME:-dumpling}
+# env passes through: TOURNAMENT_ID, LOBBY=0
 while true; do
   echo "$(date) starting dumpling" >> logs/supervisor.log
   caffeinate -dimsu npx tsx bot/src/index.ts >> logs/console.log 2>&1

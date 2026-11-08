@@ -2,6 +2,7 @@
 //   npm start                       (reads BOT_TOKEN from env, ./.env, or ./.token-<BOT_NAME>)
 //   TOURNAMENT_ID=<id> npm start    (registers for a tournament on connect)
 //   MAX_MATCHES=2 npm start         (exit after N matches; for recon)
+//   LOBBY=0 TOURNAMENT_ID=<id> npm start  (tournament only; never joins lobby matches)
 import { DbConnection, tables, type ErrorContext } from "./module_bindings/index.js";
 import { Identity } from "spacetimedb";
 import * as fs from "node:fs";
@@ -190,6 +191,7 @@ function submitWord(c: DbConnection, matchId: bigint, w: string, v: BotView, ms:
 function maybeJoinLobby(c: DbConnection) {
   if (myBotId === null) return;
   if (matchesDone >= MAX_MATCHES) return;
+  if (ENV.LOBBY === "0") return; // tournament-only mode: stay connected, never join the lobby
   const open = [...c.db.openLobbies.iter()][0];
   if (open && [...c.db.openLobbyMembers.iter()].some((lm) => lm.lobbyId === open.id && lm.botId === myBotId)) return;
   if (Date.now() - lastJoinAttempt < 5000) return;

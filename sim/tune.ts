@@ -12,11 +12,11 @@ const FIELDS = arg("fields", "field:market,market,marketHi,market,market;field:m
 const START: Partial<Params> = JSON.parse(arg("start", "{}"));
 const RIVAL: Partial<Params> = JSON.parse(arg("rparams", "{}"));
 
-const SPACE: Record<string, [number, number]> = {
+const SPACE: Record<string, [number, number]> = process.env.ENDGAME ? { liqRem: [1, 10], liqKappa: [0, 1.5], kEnd: [0, 1.5], endMu: [1, 4], endRem: [2, 14], inc: [0, 2] } : {
   kEarly: [1.0, 3.2], tEarly: [0, 5], kRamp: [10, 45], mu: [0.8, 4], endMu: [1, 3], endRem: [2, 14],
   pace: [3, 20], minCap: [2, 20], playLen: [4, 8], kPlay: [0.5, 2.2], tPlay: [0, 2.5], cashLow: [0, 40], cashLen: [4, 6], qWin: [0.3, 1], inc: [0, 1.5], lamMax: [0.6, 3], prior: [2, 20],
 };
-const INT = new Set(["playLen", "cashLen", "endRem", "kRamp"]);
+const INT = new Set(["playLen", "cashLen", "endRem", "kRamp", "liqRem"]);
 
 async function score(p: Partial<Params>) {
   let place = 0, sc = 0; const per: string[] = [];
