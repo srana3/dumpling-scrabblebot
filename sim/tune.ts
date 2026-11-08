@@ -10,6 +10,7 @@ const ITERS = +arg("iters", "30");
 const N = +arg("n", "240");
 const FIELDS = arg("fields", "field:market,market,marketHi,market,market;field:market,marketHi,Brutus,Valor,starter").split(";");
 const START: Partial<Params> = JSON.parse(arg("start", "{}"));
+const RIVAL: Partial<Params> = JSON.parse(arg("rparams", "{}"));
 
 const SPACE: Record<string, [number, number]> = {
   kEarly: [1.0, 3.2], tEarly: [0, 5], kRamp: [10, 45], mu: [0.8, 4], endMu: [1, 3], endRem: [2, 14],
@@ -20,7 +21,7 @@ const INT = new Set(["playLen", "cashLen", "endRem", "kRamp"]);
 async function score(p: Partial<Params>) {
   let place = 0, sc = 0; const per: string[] = [];
   for (const lineup of FIELDS) {
-    const rows = await evaluate({ hero: "champion", heroParams: p, lineup, seed: 11, players: 6, rack: 5, type: "Vickrey" }, N);
+    const rows = await evaluate({ hero: "champion", heroParams: p, lineup, rivalParams: RIVAL, seed: 11, players: 6, rack: 5, type: "Vickrey" }, N);
     const s = summarize(rows);
     place += s.place / FIELDS.length; sc += s.score / FIELDS.length; per.push(`${s.place.toFixed(2)}/${s.score}`);
   }
