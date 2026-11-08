@@ -70,6 +70,7 @@ function subscribeDetail(c: DbConnection, matchId: bigint) {
     .onApplied(() => { log("detail_sub", { matchId, ms: Date.now() - t }); queueTick(); })
     .onError((_ctx: unknown) => say(`detail subscription error for match ${matchId}`))
     .subscribe([
+      tables.matchState.where((r) => r.id.eq(matchId)),
       tables.matchParticipant.where((r) => r.matchId.eq(matchId)),
       tables.auction.where((r) => r.matchId.eq(matchId)),
       tables.auctionResult.where((r) => r.matchId.eq(matchId)),
@@ -129,7 +130,13 @@ function tick() {
   const c = conn;
   if (!c || myBotId === null) return;
   const m = currentMatch(c);
-  if (!m) { maybeJoinLobby(c); return; }
+  if (!m) {
+    let latest: bigint | null = null;
+    for (const id of myMatchIds) if (latest === null || id > latest) latest = id;
+    if (latest !== null && detailFor !== latest) subscribeDetail(c, latest);
+    maybeJoinLobby(c);
+    return;
+  }
   const matchId = m.id;
   subscribeDetail(c, matchId);
   let inst = instances.get(matchId);
@@ -253,7 +260,7 @@ function connect() {
           }
           queueTick();
         })
-        .subscribe([tables.bot, tables.botCredential, tables.matchState, tables.openLobbies, tables.openLobbyMembers, tables.myRack]);
+        .subscribe([tables.bot, tables.botCredential, tables.openLobbies, tables.openLobbyMembers, tables.myRack]);
       c.db.auction.onInsert(() => queueTick());
       c.db.auction.onUpdate(() => queueTick());
       c.db.myRack.onInsert(() => queueTick());
@@ -269,7 +276,7 @@ function connect() {
         if (old.status.tag !== "Ended" && neu.status.tag === "Ended") onMatchEnded(c, neu.id);
         queueTick();
       });
-      c.db.matchParticipant.onInsert((_ctx, p) => { if (p.botId === myBotId) { myMatchIds.add(p.matchId); queueTick(); } });
+      c.db.matchParticipant.onInsert((_ctx, p) => { if (p.botId === myBotId && !myMatchIds.has(p.matchId)) { myMatchIds.add(p.matchId); subscribeDetail(c, p.matchId); } queueTick(); });
       c.db.auctionResult.onInsert((_ctx, r) => {
         if (currentMatch(c)?.id !== r.matchId && !instances.has(r.matchId)) return;
         log("result", { matchId: r.matchId, aid: r.auctionId, letter: r.letter, winner: r.winnerBotId, mine: r.winnerBotId === myBotId, paid: r.paid });
