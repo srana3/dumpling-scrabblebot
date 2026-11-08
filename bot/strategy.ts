@@ -35,7 +35,7 @@ export interface Params {
 }
 
 export const DEFAULT_PARAMS: Params = {
-  hiBoost: 1.4,
+  hiBoost: 1,
   hiCapFrac: 0.25,
   kEarly: 2.13,
   kEnd: 0.4,

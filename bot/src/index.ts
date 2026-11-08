@@ -57,6 +57,8 @@ let tickQueued = false;
 let lastJoinAttempt = 0;
 let reconnectTimer: NodeJS.Timeout | null = null;
 let detailFor: bigint | null = null;
+const myMatchIds = new Set<bigint>();
+let lastWordKey = "";
 let detailHandle: { unsubscribe(): void } | null = null;
 
 function subscribeDetail(c: DbConnection, matchId: bigint) {
@@ -77,9 +79,8 @@ function subscribeDetail(c: DbConnection, matchId: bigint) {
 
 function currentMatch(c: DbConnection) {
   if (myBotId === null) return undefined;
-  for (const p of c.db.matchParticipant.iter()) {
-    if (p.botId !== myBotId) continue;
-    const m = c.db.matchState.id.find(p.matchId);
+  for (const id of myMatchIds) {
+    const m = c.db.matchState.id.find(id);
     if (m?.status.tag === "Running") return m;
   }
   return undefined;
@@ -142,8 +143,10 @@ function tick() {
   // 1) words first (server processes our calls in order, so the bid sees the reward)
   const v0 = buildView(c, matchId);
   if (!v0) return;
+  const wordKey = `${matchId}|${v0.rack.join(",")}|${v0.bagTotal}|${v0.balance < 12}|${pending.size}`;
   const t0 = performance.now();
-  const ws = inst.chooseWords(v0);
+  const ws = wordKey === lastWordKey ? [] : inst.chooseWords(v0);
+  lastWordKey = wordKey;
   const wordMs = performance.now() - t0;
   for (const w of ws) submitWord(c, matchId, w, v0, wordMs);
   // 2) bid on the open auction once
@@ -239,7 +242,10 @@ function connect() {
           say(`subscribed in ${Date.now() - tSub}ms; acting as bot '${c.db.bot.id.find(myBotId)?.name}' (id ${myBotId})`);
           log("connected", { botId: myBotId, subMs: Date.now() - tSub });
           const me = myBotId;
-          c.subscriptionBuilder().onApplied(() => queueTick()).subscribe([tables.matchParticipant.where((r) => r.botId.eq(me))]);
+          c.subscriptionBuilder().onApplied(() => {
+            for (const p of c.db.matchParticipant.iter()) if (p.botId === me) myMatchIds.add(p.matchId);
+            queueTick();
+          }).subscribe([tables.matchParticipant.where((r) => r.botId.eq(me))]);
           if (TOURNAMENT_ID) {
             c.reducers.registerForTournament({ tournamentId: BigInt(TOURNAMENT_ID) })
               .then(() => { say(`registered for tournament ${TOURNAMENT_ID}`); log("tournament_register", { id: TOURNAMENT_ID }); })
@@ -253,15 +259,17 @@ function connect() {
       c.db.myRack.onInsert(() => queueTick());
       c.db.myRack.onUpdate(() => queueTick());
       c.db.myRack.onDelete(() => queueTick());
-      c.db.matchState.onInsert(() => queueTick());
+      // NB: match_state streams every match on the server; only react to ours.
       c.db.openLobbies.onInsert(() => queueTick());
       c.db.openLobbies.onDelete(() => queueTick());
       c.db.openLobbyMembers.onDelete(() => queueTick());
-      c.db.matchParticipant.onInsert(() => queueTick());
+
       c.db.matchState.onUpdate((_ctx, old, neu) => {
+        if (!myMatchIds.has(neu.id)) return;
         if (old.status.tag !== "Ended" && neu.status.tag === "Ended") onMatchEnded(c, neu.id);
         queueTick();
       });
+      c.db.matchParticipant.onInsert((_ctx, p) => { if (p.botId === myBotId) { myMatchIds.add(p.matchId); queueTick(); } });
       c.db.auctionResult.onInsert((_ctx, r) => {
         if (currentMatch(c)?.id !== r.matchId && !instances.has(r.matchId)) return;
         log("result", { matchId: r.matchId, aid: r.auctionId, letter: r.letter, winner: r.winnerBotId, mine: r.winnerBotId === myBotId, paid: r.paid });
