@@ -29,12 +29,10 @@ export interface Params {
   lamMin: number; // bounds for the score-per-coin threshold
   lamMax: number;
   prior: number; // pseudo-observations for the price model prior
-  valMinLen: number; // before the endgame, only words this long count toward a tile's value
   budget: number; // partition node budget
 }
 
 export const DEFAULT_PARAMS: Params = {
-  valMinLen: 7,
   kEarly: 2.13,
   kEnd: 0.4,
   kRamp: 39,
@@ -46,9 +44,9 @@ export const DEFAULT_PARAMS: Params = {
   endRem: 6,
   pace: 6.41,
   minCap: 10.32,
-  playLen: 7,
+  playLen: 4,
   cashLow: 6.34,
-  cashLen: 6,
+  cashLen: 4,
   liqRem: 2,
   liqKappa: 0.3,
   jitter: 0.08,
@@ -73,7 +71,7 @@ function tauAt(p: Params, rem: number): number {
 }
 
 export function marginalValue(p: Params, rack: Counts, L: string, rem: number): number {
-  const opts = { kappa: kappaAt(p, rem), tau: tauAt(p, rem), nodeBudget: p.budget, timeMs: 70, minLen: rem > p.endRem ? p.valMinLen : 2 };
+  const opts = { kappa: kappaAt(p, rem), tau: tauAt(p, rem), nodeBudget: p.budget, timeMs: 70 };
   const base = bestPartition(d, rack, opts).value;
   const r2 = rack.slice();
   r2[li(L)]!++;
