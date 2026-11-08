@@ -141,7 +141,36 @@ export const SmartRival: BotFactory = {
   }),
 };
 
+/** Live-calibrated rival (from recon match 45629: paid ~3.5*face+3, ~10/tile, plays 5-7 letter words mid-game). */
+export function marketBot(scale = 1, name = "market"): BotFactory {
+  return {
+    name,
+    create: (seed) => {
+      let s = seed >>> 0;
+      const rnd = () => ((s = (Math.imul(s ^ (s >>> 15), 2246822507) + 0x9e3779b9) >>> 0) / 4294967296);
+      return {
+        decideBid(v, L) {
+          if (v.bagTotal === 0) return 0;
+          const f = letterValue(L);
+          const have = v.rack[li(L)]!;
+          let b = (3 + 3.3 * f) * scale * (0.7 + 0.6 * rnd());
+          if (have >= 2) b *= 0.5;
+          if (v.bagTotal <= 8) b *= 1.5;
+          return clampBid(Math.min(b, v.balance * 0.4), v);
+        },
+        chooseWords(v) {
+          if (v.bagTotal <= 2) return playAll(v, 2);
+          return bestPartition(d, v.rack, { kappa: 1.5, nodeBudget: 1500 }).words.filter((w) => w.length >= 5);
+        },
+      };
+    },
+  };
+}
+export const Market = marketBot(1);
+export const MarketHi = marketBot(1.3, "marketHi");
+
 export const ZOO: Record<string, BotFactory> = {
+  market: Market, marketHi: MarketHi,
   starter: Starter, starterGreedy: StarterGreedy, hoarder: Hoarder, allin: AllIn, rare: RareChaser,
   spammer: Spammer, copycat: Copycat, jammer: Jammer, saver: Saver, smart: SmartRival,
 };

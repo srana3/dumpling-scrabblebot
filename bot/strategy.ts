@@ -8,6 +8,9 @@ export interface Params {
   kEarly: number; // option value per face point of an unplayed tile, early game
   kEnd: number; // ... near the end
   kRamp: number; // auctions-remaining over which kappa ramps from kEnd to kEarly
+  tEarly: number; // per-tile enabling value (any letter), early game; ramps to 0 with kappa
+  kPlay: number; // mid-game: option value used when deciding which words to cash in now
+  tPlay: number;
   mu: number; // money units bid per point of marginal value
   endMu: number; // multiplier in the last `endRem` auctions (money is worthless at the end)
   endRem: number;
@@ -27,6 +30,9 @@ export const DEFAULT_PARAMS: Params = {
   kEarly: 2.0,
   kEnd: 0.4,
   kRamp: 25,
+  tEarly: 2.0,
+  kPlay: 1.2,
+  tPlay: 0.5,
   mu: 1.0,
   endMu: 1.5,
   endRem: 6,
@@ -48,10 +54,12 @@ function kappaAt(p: Params, rem: number): number {
   const t = Math.min(1, rem / p.kRamp);
   return p.kEnd + (p.kEarly - p.kEnd) * t;
 }
+function tauAt(p: Params, rem: number): number {
+  return p.tEarly * Math.min(1, rem / p.kRamp);
+}
 
 export function marginalValue(p: Params, rack: Counts, L: string, rem: number): number {
-  const kappa = kappaAt(p, rem);
-  const opts = { kappa, nodeBudget: p.budget };
+  const opts = { kappa: kappaAt(p, rem), tau: tauAt(p, rem), nodeBudget: p.budget };
   const base = bestPartition(d, rack, opts).value;
   const r2 = rack.slice();
   r2[li(L)]!++;
@@ -100,8 +108,7 @@ export function makeChampion(p: Params = DEFAULT_PARAMS, name = "champion"): Bot
             return bestPartition(d, v.rack, { kappa, nodeBudget: p.budget * 4 }).words;
           }
           const poor = v.balance < p.cashLow;
-          const kappa = poor ? Math.min(kappaAt(p, rem), 1.4) : kappaAt(p, rem);
-          const part = bestPartition(d, v.rack, { kappa, nodeBudget: p.budget });
+          const part = bestPartition(d, v.rack, { kappa: p.kPlay, tau: p.tPlay, nodeBudget: p.budget });
           const minLen = poor ? p.cashLen : p.playLen;
           return part.words.filter((w) => w.length >= minLen);
         },
