@@ -16,6 +16,7 @@ export interface PartitionOpts {
   minLen?: number;
   nodeBudget?: number;
   perLetter?: number; // max candidates considered per branching letter
+  timeMs?: number; // wall-clock cap for the search (anytime: returns best found)
 }
 
 export function bestPartition(d: Dict, rack: Counts, opts: PartitionOpts = {}): Partition {
@@ -24,6 +25,8 @@ export function bestPartition(d: Dict, rack: Counts, opts: PartitionOpts = {}): 
   const minLen = opts.minLen ?? 2;
   const budget = opts.nodeBudget ?? 6000;
   const perLetter = opts.perLetter ?? 40;
+  const deadline = performance.now() + (opts.timeMs ?? 60);
+  let timeUp = false;
   const all = formable(d, rack, minLen);
   // Drop dominated words (reward no better than leaving letters unused).
   const cand = all.filter((i) => d.reward[i]! > kappa * d.base[i]! + tau * d.len[i]! + 1e-9);
@@ -51,7 +54,8 @@ export function bestPartition(d: Dict, rack: Counts, opts: PartitionOpts = {}): 
     const here = acc + kappa * faceLeft + tau * tilesLeft;
     if (here > best) { best = here; bestWords = stack.slice(); }
     if (acc + Math.max(3, kappa) * faceLeft + tau * tilesLeft <= best) return;
-    if (nodes++ > budget) return;
+    if (timeUp || nodes++ > budget) return;
+    if ((nodes & 255) === 0 && performance.now() > deadline) { timeUp = true; return; }
     const k = String.fromCharCode(...r);
     const s = seen.get(k);
     if (s !== undefined && s >= acc) return;
@@ -71,7 +75,7 @@ export function bestPartition(d: Dict, rack: Counts, opts: PartitionOpts = {}): 
       dfs(acc + d.reward[w]!, faceLeft - d.base[w]!, tilesLeft - d.len[w]!);
       stack.pop();
       for (let x = 0; x < 26; x++) r[x]! += d.counts[o + x]!;
-      if (nodes > budget) break;
+      if (timeUp || nodes > budget) break;
     }
     // leave one copy of c unused
     r[c]!--;

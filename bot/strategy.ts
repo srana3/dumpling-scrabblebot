@@ -27,20 +27,20 @@ export interface Params {
 }
 
 export const DEFAULT_PARAMS: Params = {
-  kEarly: 2.0,
+  kEarly: 2.96,
   kEnd: 0.4,
   kRamp: 25,
-  tEarly: 2.0,
-  kPlay: 1.2,
-  tPlay: 0.5,
-  mu: 1.0,
-  endMu: 1.5,
+  tEarly: 2.11,
+  kPlay: 1.33,
+  tPlay: 1.73,
+  mu: 1.45,
+  endMu: 1.76,
   endRem: 6,
-  pace: 8,
-  minCap: 6,
-  playLen: 7,
-  cashLow: 12,
-  cashLen: 5,
+  pace: 13.95,
+  minCap: 10.32,
+  playLen: 8,
+  cashLow: 22.85,
+  cashLen: 4,
   liqRem: 2,
   liqKappa: 0.3,
   jitter: 0.08,
@@ -59,7 +59,7 @@ function tauAt(p: Params, rem: number): number {
 }
 
 export function marginalValue(p: Params, rack: Counts, L: string, rem: number): number {
-  const opts = { kappa: kappaAt(p, rem), tau: tauAt(p, rem), nodeBudget: p.budget };
+  const opts = { kappa: kappaAt(p, rem), tau: tauAt(p, rem), nodeBudget: p.budget, timeMs: 70 };
   const base = bestPartition(d, rack, opts).value;
   const r2 = rack.slice();
   r2[li(L)]!++;
@@ -105,10 +105,10 @@ export function makeChampion(p: Params = DEFAULT_PARAMS, name = "champion"): Bot
           const rem = v.bagTotal;
           if (rem <= p.liqRem) {
             const kappa = rem <= 0 ? 0 : p.liqKappa;
-            return bestPartition(d, v.rack, { kappa, nodeBudget: p.budget * 4 }).words;
+            return bestPartition(d, v.rack, { kappa, nodeBudget: p.budget * 4, timeMs: 250 }).words;
           }
           const poor = v.balance < p.cashLow;
-          const part = bestPartition(d, v.rack, { kappa: p.kPlay, tau: p.tPlay, nodeBudget: p.budget });
+          const part = bestPartition(d, v.rack, { kappa: p.kPlay, tau: p.tPlay, nodeBudget: p.budget, timeMs: 120 });
           const minLen = poor ? p.cashLen : p.playLen;
           return part.words.filter((w) => w.length >= minLen);
         },
